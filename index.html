@@ -477,10 +477,27 @@
     setTimeout(() => form.remove(), 5000);
   }
 
+  // Push-Nachricht an Xavers Handy (ntfy-App, Thema siehe NTFY_TOPIC)
+  const NTFY_TOPIC = "xaver-date-4d5cbc2d";
+  function sendPush() {
+    const lines = [
+      "Was: " + state.what + (state.detail ? " (" + state.detail + ")" : ""),
+      "Wann: " + prettyDate(state.date) + ", " + state.time,
+      "Wünsche: " + (state.wishes || "-"),
+      "Nein-Versuche: " + tries
+    ];
+    const url = "https://ntfy.sh/" + NTFY_TOPIC +
+      "?title=" + encodeURIComponent("Sie hat JA gesagt!") +
+      "&tags=heart,rose" +
+      "&click=" + encodeURIComponent(gcalUrl());
+    fetch(url, { method: "POST", body: lines.join("\n"), mode: "no-cors", keepalive: true }).catch(() => {});
+  }
+
   confirmBtn.addEventListener("click", () => {
     confirmBtn.disabled = true;
     confirmBtn.textContent = "Wird gesendet… 💌";
     sendError.style.display = "none";
+    try { sendPush(); } catch (e) {}
     try {
       sendMail();
     } catch (err) {
