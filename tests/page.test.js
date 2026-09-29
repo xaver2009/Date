@@ -7,9 +7,9 @@ const { JSDOM, VirtualConsole, ResourceLoader } = require("jsdom");
 // Lädt Skripte der Live-Adresse aus dem lokalen Ordner statt aus dem Internet
 class LocalLoader extends ResourceLoader {
   fetch(url, options) {
-    const m = url.match(/^https:\/\/xaver2009\.github\.io\/Date\/([\w.-]+)$/);
+    const m = url.match(/^https:\/\/xaver2009\.github\.io\/Date\/([\w.-]+)(\?.*)?$/);
     if (m) return Promise.resolve(fs.readFileSync(path.join(__dirname, "..", m[1])));
-    return super.fetch(url, options);
+    return Promise.reject(new Error("Test darf nicht ins Internet: " + url));
   }
 }
 
