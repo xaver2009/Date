@@ -68,7 +68,7 @@
   .card { backdrop-filter: blur(2px); }
   .yes:hover { background: var(--accent-dark); transform: scale(1.05); }
   .no { background: #f1e6ea; color: var(--muted); position: relative; }
-  .no.flee { position: fixed; z-index: 5; transition: left .18s ease, top .18s ease; }
+  .no.flee { position: fixed; z-index: 50; margin: 0; transition: left .18s ease, top .18s ease; }
   .primary {
     background: var(--accent); color: #fff; width: 100%; margin-top: 18px;
   }
@@ -319,13 +319,16 @@
     tries++;
     const rect = noBtn.getBoundingClientRect();
     if (!noBtn.classList.contains("flee")) {
+      document.body.appendChild(noBtn);
       noBtn.style.left = rect.left + "px";
       noBtn.style.top = rect.top + "px";
       noBtn.classList.add("flee");
     }
     const pad = 16;
-    const maxX = window.innerWidth - rect.width - pad;
-    const maxY = window.innerHeight - rect.height - pad;
+    const vw = document.documentElement.clientWidth;
+    const vh = window.innerHeight;
+    const maxX = Math.max(pad, vw - rect.width - pad);
+    const maxY = Math.max(pad, vh - rect.height - pad);
     let x, y, tries2 = 0;
     do {
       x = pad + Math.random() * (maxX - pad);
@@ -339,9 +342,11 @@
     yesBtn.style.transform = "scale(" + scale + ")";
   }
 
+  const btnRow = document.querySelector(".btn-row");
   function resetNo() {
     noBtn.classList.remove("flee");
     noBtn.style.left = noBtn.style.top = "";
+    if (noBtn.parentNode !== btnRow) btnRow.appendChild(noBtn);
   }
 
   noBtn.addEventListener("mouseenter", flee);
@@ -438,39 +443,37 @@
   const confirmBtn = document.getElementById("confirmBtn");
   const sendError = document.getElementById("sendError");
 
-  let calendarOpened = false;
   confirmBtn.addEventListener("click", async () => {
     confirmBtn.disabled = true;
     confirmBtn.textContent = "Wird gesendet… 💌";
     sendError.style.display = "none";
-    const request = fetch("https://formsubmit.co/ajax/" + EMAIL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify({
-          _subject: "💖 Sie hat JA gesagt! Date-Anfrage ausgefüllt",
-          _template: "table",
-          _captcha: "false",
-          "Was": state.what,
-          "Genauer": state.detail || "–",
-          "Datum": prettyDate(state.date),
-          "Tageszeit": state.time,
-          "Sonstige Wünsche": state.wishes || "–",
-          "Nein-Versuche": tries,
-          "In Kalender eintragen": gcalUrl()
-        })
-      });
-    // Kalender direkt im Klick öffnen (Browser erlauben das nur als direkte Reaktion auf den Tipp)
-    if (!calendarOpened) {
-      calendarOpened = true;
-      try { openCalendar(); } catch (e) {}
-    }
+    const data = new URLSearchParams({
+      _subject: "Sie hat JA gesagt! Date-Anfrage ausgefüllt",
+      _template: "table",
+      _captcha: "false",
+      "Was": state.what,
+      "Genauer": state.detail || "-",
+      "Datum": prettyDate(state.date),
+      "Tageszeit": state.time,
+      "Sonstige Wünsche": state.wishes || "-",
+      "Nein-Versuche": String(tries),
+      "In Kalender eintragen": gcalUrl()
+    });
     try {
-      const res = await request;
-      if (!res.ok) throw new Error("send failed");
+      const res = await fetch("https://formsubmit.co/ajax/" + EMAIL, {
+        method: "POST",
+        headers: { "Accept": "application/json" },
+        body: data,
+        keepalive: true
+      });
+      if (!res.ok) throw new Error("send failed " + res.status);
       show("step-done");
       setupCalendar();
       burst();
+      // Kalender-Vorschlag direkt öffnen; klappt das nicht, gibt es den Button auf dem Endscreen
+      try { openCalendar(); } catch (e) {}
     } catch (err) {
+      console.error(err);
       sendError.style.display = "block";
       confirmBtn.disabled = false;
       confirmBtn.textContent = "Date bestätigen 💖";
