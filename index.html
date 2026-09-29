@@ -74,7 +74,6 @@
   }
   .primary:disabled { background: #e3b3b9; cursor: not-allowed; }
   .primary:not(:disabled):hover { background: var(--accent-dark); }
-  .sms-btn { display: block; text-decoration: none; padding: 14px 30px; border-radius: 999px; font-size: 18px; font-weight: 500; }
   .cal-link { display: block; margin-top: 14px; color: var(--accent-dark); font-size: 15px; text-decoration: underline; }
   .back {
     background: none; color: var(--muted); font-size: 15px; padding: 10px; margin-top: 6px;
@@ -234,13 +233,13 @@
     <div class="emoji">🥳</div>
     <h1>Es ist ein Date!</h1>
     <p>Ich freu mich riesig auf dich 💕</p>
-    <a class="primary sms-btn" id="smsBtn">💌 Xaver Bescheid geben</a>
     <button class="back" id="icsBtn">📅 Nochmal im Kalender öffnen</button>
     <a class="cal-link" id="gcalLink" target="_blank" rel="noopener">oder in Google Kalender speichern</a>
   </section>
 
 </main>
 
+<script src="calendar.js"></script>
 <script src="mail.js"></script>
 <script>
   // Web3Forms-Zugangsschlüssel (von web3forms.com, die Mails gehen an die dort hinterlegte Adresse)
@@ -457,7 +456,8 @@
     sendError.style.display = "none";
 
     const fields = DateMail.buildMailFields(state, {
-      prettyDate: prettyDate(state.date), tries, calendarUrl: gcalUrl()
+      prettyDate: prettyDate(state.date), tries,
+      googleUrl: gcalUrl(), appleUrl: DateCalendar.appleUrl(state, location.href)
     });
     const sending = mailer.send(fields);
 
@@ -480,75 +480,15 @@
     burst();
   });
 
-  // Kalender-Eintrag
-  const TIMES = {
-    "Vormittags": ["090000", "120000"],
-    "Mittags": ["130000", "170000"],
-    "Abends": ["180000", "000000", true]
-  };
-  const ACT_NAME = {
-    "Sauna": "Sauna", "Essen gehen": "Essen gehen", "Aktiv": "Aktiv sein",
-    "Kino": "Kino", "Gemütlich": "Gemütlich", "Überraschung": "Überraschung"
-  };
+  // Kalender-Eintrag (calendar.js)
+  function gcalUrl() { return DateCalendar.gcalUrl(state); }
+  function openCalendar() { DateCalendar.downloadIcs(state, document); }
 
-  function calData() {
-    const day = state.date.replace(/-/g, "");
-    const [y, m, d] = state.date.split("-").map(Number);
-    const next = new Date(y, m - 1, d + 1);
-    const nextDay = next.getFullYear() + String(next.getMonth() + 1).padStart(2, "0") + String(next.getDate()).padStart(2, "0");
-    const t = TIMES[state.time];
-    const title = "❤️ Date: " + ACT_NAME[state.what] + (state.detail ? " (" + state.detail + ")" : "");
-    let desc = "Unser Date ❤️ " + ACT_NAME[state.what] + (state.detail ? ", " + state.detail : "") + ".";
-    if (state.wishes) desc += " Wünsche: " + state.wishes;
-    return { day, nextDay, t, title, desc };
-  }
-
-  function icsEscape(str) {
-    return str.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
-  }
-
-  function gcalUrl() {
-    const c = calData();
-    const dates = c.t ? c.day + "T" + c.t[0] + "/" + (c.t[2] ? c.nextDay : c.day) + "T" + c.t[1] : c.day + "/" + c.nextDay;
-    return "https://calendar.google.com/calendar/render?action=TEMPLATE" +
-      "&text=" + encodeURIComponent(c.title) +
-      "&dates=" + dates +
-      "&details=" + encodeURIComponent(c.desc);
-  }
-
-  const PHONE = "+4915226528174";
   function setupCalendar() {
     document.getElementById("gcalLink").href = gcalUrl();
-    const text = "Ja, ich will ❤️ " + ACT_NAME[state.what] + (state.detail ? " (" + state.detail + ")" : "") +
-      " am " + prettyDate(state.date) + ", " + state.time +
-      (state.wishes ? ". Wünsche: " + state.wishes : "");
-    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-    document.getElementById("smsBtn").href = "sms:" + PHONE + (isIOS ? "&" : "?") + "body=" + encodeURIComponent(text);
   }
 
   document.getElementById("icsBtn").addEventListener("click", openCalendar);
-
-  function openCalendar() {
-    const c = calData();
-    const lines = [
-      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Date//DE", "CALSCALE:GREGORIAN",
-      "BEGIN:VEVENT",
-      "UID:" + Date.now() + "@date",
-      "DTSTAMP:" + new Date().toISOString().replace(/[-:]/g, "").split(".")[0] + "Z",
-      c.t ? "DTSTART:" + c.day + "T" + c.t[0] : "DTSTART;VALUE=DATE:" + c.day,
-      c.t ? "DTEND:" + (c.t[2] ? c.nextDay : c.day) + "T" + c.t[1] : "DTEND;VALUE=DATE:" + c.nextDay,
-      "SUMMARY:" + icsEscape(c.title),
-      "DESCRIPTION:" + icsEscape(c.desc),
-      "BEGIN:VALARM", "TRIGGER:-P1D", "ACTION:DISPLAY", "DESCRIPTION:Morgen ist unser Date ❤️", "END:VALARM",
-      "END:VEVENT", "END:VCALENDAR"
-    ];
-    const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "unser-date.ics";
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-  }
 
   function burst() {
     for (let i = 0; i < 30; i++) {

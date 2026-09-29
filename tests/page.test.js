@@ -1,7 +1,17 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
-const { JSDOM, VirtualConsole } = require("jsdom");
+const fs = require("node:fs");
+const { JSDOM, VirtualConsole, ResourceLoader } = require("jsdom");
+
+// Lädt Skripte der Live-Adresse aus dem lokalen Ordner statt aus dem Internet
+class LocalLoader extends ResourceLoader {
+  fetch(url, options) {
+    const m = url.match(/^https:\/\/xaver2009\.github\.io\/Date\/([\w.-]+)$/);
+    if (m) return Promise.resolve(fs.readFileSync(path.join(__dirname, "..", m[1])));
+    return super.fetch(url, options);
+  }
+}
 
 const PAGE = path.join(__dirname, "..", "index.html");
 
@@ -84,7 +94,20 @@ test("Nach Bestätigung geht genau eine Mail mit allen Angaben an Web3Forms", as
   assert.equal(b["Tageszeit"], "Abends");
   assert.equal(b["Sonstige Wünsche"], "Popcorn");
   assert.match(b["Datum"], /12\..*Oktober.*2030/);
-  assert.match(b["In Kalender eintragen"], /^https:\/\/calendar\.google\.com/);
+  assert.match(b["Google Kalender"], /^https:\/\/calendar\.google\.com/);
+  assert.match(b["Apple Kalender"], /kalender\.html\?.*date=2030-10-12/);
+  win.close();
+});
+
+test("Fertig-Seite hat keinen SMS-Knopf, Kalender-Links funktionieren weiter", async () => {
+  const { doc, win } = await loadPage(() => jsonResponse({ success: true }));
+  fillUntilConfirm(doc);
+  click($(doc, "#confirmBtn"));
+  await waitFor(() => activeStep(doc) === "step-done");
+  assert.equal(doc.querySelector('a[href^="sms:"], #smsBtn'), null);
+  assert.doesNotMatch(doc.getElementById("step-done").textContent, /Bescheid geben/);
+  assert.match($(doc, "#gcalLink").href, /^https:\/\/calendar\.google\.com/);
+  assert.ok($(doc, "#icsBtn"));
   win.close();
 });
 
@@ -124,5 +147,67 @@ test("Netzwerkfehler → Fehlermeldung statt Absturz", async () => {
   click($(doc, "#confirmBtn"));
   await waitFor(() => $(doc, "#sendError").style.display === "block");
   assert.equal(activeStep(doc), "step-confirm");
+  win.close();
+});
+
+// ---------- kalender.html (Link "Apple Kalender" aus der Mail) ----------
+
+const CAL_PAGE = path.join(__dirname, "..", "kalender.html");
+
+async function loadCalendarPage(query) {
+  const blobs = [];
+  const dom = await JSDOM.fromFile(CAL_PAGE, {
+    runScripts: "dangerously",
+    pretendToBeVisual: true,
+    virtualConsole: new VirtualConsole(),
+    resources: new LocalLoader(),
+    url: "https://xaver2009.github.io/Date/kalender.html" + query,
+    beforeParse(window) {
+      window.URL.createObjectURL = (blob) => { blobs.push(blob); return "blob:test"; };
+      window.URL.revokeObjectURL = () => {};
+    }
+  });
+  await new Promise(r => dom.window.addEventListener("load", r));
+  return { dom, win: dom.window, doc: dom.window.document, blobs };
+}
+
+function blobText(win, blob) {
+  return new Promise(r => { const fr = new win.FileReader(); fr.onload = () => r(fr.result); fr.readAsText(blob); });
+}
+
+test("Apple-Link aus der Mail öffnet kalender.html und erzeugt den richtigen Termin", async () => {
+  // Link genau so, wie er in der Mail landet
+  const { doc: page, calls, win: pageWin } = await loadPage(() => jsonResponse({ success: true }));
+  fillUntilConfirm(page);
+  click($(page, "#confirmBtn"));
+  await waitFor(() => activeStep(page) === "step-done");
+  const query = new URL(calls[0].body["Apple Kalender"]).search;
+  pageWin.close();
+
+  const { doc, win, blobs } = await loadCalendarPage(query);
+  assert.match($(doc, "#title").textContent, /Kino \(Komödie\)/);
+  assert.match($(doc, "#when").textContent, /12\. Oktober 2030.*Abends/);
+
+  const before = blobs.length;
+  click($(doc, "#addBtn"));
+  assert.equal(blobs.length, before + 1);
+  const ics = await blobText(win, blobs[blobs.length - 1]);
+  assert.match(ics, /DTSTART:20301012T180000/);
+  assert.match(ics, /SUMMARY:❤️ Date: Kino \(Komödie\)/);
+  win.close();
+});
+
+test("kalender.html mit kaputtem Link zeigt Hinweis statt Absturz", async () => {
+  const { doc, win, blobs } = await loadCalendarPage("?what=Kino");
+  assert.match($(doc, "#error").textContent, /nicht/);
+  assert.equal($(doc, "#addBtn").hidden, true);
+  assert.equal(blobs.length, 0);
+  win.close();
+});
+
+test("kalender.html zeigt Text aus dem Link nie als HTML an", async () => {
+  const q = "?what=" + encodeURIComponent("<img src=x onerror=alert(1)>") + "&date=2030-10-12&time=Abends";
+  const { doc, win } = await loadCalendarPage(q);
+  assert.equal(doc.querySelector("img"), null);
   win.close();
 });

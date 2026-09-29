@@ -23,24 +23,26 @@ function fakeFetch(...responses) {
 // ---------- buildMailFields ----------
 
 test("Mail enthält alle Angaben aus dem Formular", () => {
-  const f = buildMailFields(STATE, { prettyDate: "Samstag, 10. Oktober 2026", tries: 3, calendarUrl: "https://cal" });
+  const f = buildMailFields(STATE, { prettyDate: "Samstag, 10. Oktober 2026", tries: 3, googleUrl: "https://g", appleUrl: "https://a" });
   assert.equal(f["Was"], "Kino");
   assert.equal(f["Genauer"], "Komödie");
   assert.equal(f["Datum"], "Samstag, 10. Oktober 2026");
   assert.equal(f["Tageszeit"], "Abends");
   assert.equal(f["Sonstige Wünsche"], "Popcorn <süß>");
   assert.equal(f["Nein-Versuche"], "3");
-  assert.equal(f["In Kalender eintragen"], "https://cal");
+  assert.equal(f["Google Kalender"], "https://g");
+  assert.equal(f["Apple Kalender"], "https://a");
+  assert.equal(f["In Kalender eintragen"], undefined);
 });
 
 test("Mail hat Betreff und Absendername", () => {
-  const f = buildMailFields(STATE, { prettyDate: "x", tries: 0, calendarUrl: "" });
+  const f = buildMailFields(STATE, { prettyDate: "x", tries: 0, googleUrl: "", appleUrl: "" });
   assert.match(f.subject, /JA/);
   assert.equal(f.from_name, "Date-Webseite");
 });
 
 test("Leere Felder werden als '-' angezeigt", () => {
-  const f = buildMailFields({ ...STATE, detail: "", wishes: "" }, { prettyDate: "x", tries: 0, calendarUrl: "" });
+  const f = buildMailFields({ ...STATE, detail: "", wishes: "" }, { prettyDate: "x", tries: 0, googleUrl: "", appleUrl: "" });
   assert.equal(f["Genauer"], "-");
   assert.equal(f["Sonstige Wünsche"], "-");
 });
