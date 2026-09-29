@@ -443,11 +443,14 @@
   const confirmBtn = document.getElementById("confirmBtn");
   const sendError = document.getElementById("sendError");
 
-  confirmBtn.addEventListener("click", async () => {
-    confirmBtn.disabled = true;
-    confirmBtn.textContent = "Wird gesendet… 💌";
-    sendError.style.display = "none";
-    const data = new URLSearchParams({
+  // Versand über ein verstecktes Formular (klassischer FormSubmit-Weg, ohne fetch)
+  const sendFrame = document.createElement("iframe");
+  sendFrame.name = "sendFrame";
+  sendFrame.style.display = "none";
+  document.body.appendChild(sendFrame);
+
+  function sendMail() {
+    const fields = {
       _subject: "Sie hat JA gesagt! Date-Anfrage ausgefüllt",
       _template: "table",
       _captcha: "false",
@@ -458,26 +461,42 @@
       "Sonstige Wünsche": state.wishes || "-",
       "Nein-Versuche": String(tries),
       "In Kalender eintragen": gcalUrl()
+    };
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = "https://formsubmit.co/" + EMAIL;
+    form.target = "sendFrame";
+    form.style.display = "none";
+    Object.entries(fields).forEach(([k, v]) => {
+      const input = document.createElement("input");
+      input.type = "hidden"; input.name = k; input.value = v;
+      form.appendChild(input);
     });
+    document.body.appendChild(form);
+    form.submit();
+    setTimeout(() => form.remove(), 5000);
+  }
+
+  confirmBtn.addEventListener("click", () => {
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = "Wird gesendet… 💌";
+    sendError.style.display = "none";
     try {
-      const res = await fetch("https://formsubmit.co/ajax/" + EMAIL, {
-        method: "POST",
-        headers: { "Accept": "application/json" },
-        body: data,
-        keepalive: true
-      });
-      if (!res.ok) throw new Error("send failed " + res.status);
-      show("step-done");
-      setupCalendar();
-      burst();
-      // Kalender-Vorschlag direkt öffnen; klappt das nicht, gibt es den Button auf dem Endscreen
-      try { openCalendar(); } catch (e) {}
+      sendMail();
     } catch (err) {
       console.error(err);
       sendError.style.display = "block";
       confirmBtn.disabled = false;
       confirmBtn.textContent = "Date bestätigen 💖";
+      return;
     }
+    // Kalender direkt im Tipp öffnen, damit der Browser es erlaubt
+    try { openCalendar(); } catch (e) {}
+    setTimeout(() => {
+      show("step-done");
+      setupCalendar();
+      burst();
+    }, 1200);
   });
 
   // Kalender-Eintrag
