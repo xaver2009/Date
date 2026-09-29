@@ -45,7 +45,13 @@
     cursor: pointer;
   }
   button:hover { background: var(--accent-dark); }
-  .cal-link { display: block; margin-top: 14px; color: var(--accent-dark); font-size: 15px; text-decoration: underline; }
+  .btn.google {
+    display: block; text-decoration: none; font-size: 18px; font-weight: 500;
+    border: 2px solid var(--accent); color: var(--accent-dark); background: #fff;
+    border-radius: 999px; padding: 12px 30px; margin-top: 12px;
+  }
+  .btn.google[hidden] { display: none; }
+  .btn.google:hover { background: var(--soft); }
 </style>
 </head>
 <body>
@@ -54,18 +60,20 @@
   <div class="emoji">📅</div>
   <h1 id="title">Unser Date</h1>
   <p id="when"></p>
-  <button id="addBtn">🍎 Zum Apple Kalender hinzufügen</button>
-  <a class="cal-link" id="gcalLink" target="_blank" rel="noopener" hidden>oder in Google Kalender speichern</a>
+  <p id="pick">In welchen Kalender soll der Termin?</p>
+  <button id="addBtn">🍎 Apple Kalender</button>
+  <a class="btn google" id="gcalBtn" target="_blank" rel="noopener" hidden>📆 Google Kalender</a>
   <p class="error" id="error"></p>
 </main>
 
-<script src="calendar.js?v=4"></script>
+<script src="calendar.js?v=5"></script>
 <script>
   const state = DateCalendar.stateFromQuery(location.search);
   const addBtn = document.getElementById("addBtn");
 
   if (!state) {
     addBtn.hidden = true;
+    document.getElementById("pick").hidden = true;
     document.getElementById("error").textContent = "Dieser Kalender-Link ist leider nicht vollständig 🙈";
   } else {
     const [y, m, d] = state.date.split("-").map(Number);
@@ -74,7 +82,7 @@
     });
     document.getElementById("title").textContent = DateCalendar.eventData(state).title;
     document.getElementById("when").textContent = day + ", " + state.time;
-    const gcal = document.getElementById("gcalLink");
+    const gcal = document.getElementById("gcalBtn");
     gcal.href = DateCalendar.gcalUrl(state);
     gcal.hidden = false;
     addBtn.addEventListener("click", () => DateCalendar.downloadIcs(state, document));

@@ -4,7 +4,7 @@
 (function (root) {
   const WEB3FORMS_URL = "https://api.web3forms.com/submit";
 
-  function buildMailFields(state, { prettyDate, tries, googleUrl, appleUrl }) {
+  function buildMailFields(state, { prettyDate, tries, calendarPageUrl }) {
     return {
       subject: "Sie hat JA gesagt! Date-Anfrage ausgefüllt",
       from_name: "Date-Webseite",
@@ -14,8 +14,7 @@
       "Tageszeit": state.time,
       "Sonstige Wünsche": state.wishes || "-",
       "Nein-Versuche": String(tries),
-      "Google Kalender": googleUrl,
-      "Apple Kalender": appleUrl
+      "Zum Kalender hinzufügen": calendarPageUrl
     };
   }
 

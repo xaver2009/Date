@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { gcalUrl, icsText, appleUrl, stateFromQuery } = require("../calendar.js");
+const { gcalUrl, icsText, calendarPageUrl, stateFromQuery } = require("../calendar.js");
 
 const EVENING = { what: "Kino", detail: "Komödie", wishes: "Popcorn, süß; bitte", date: "2030-10-12", time: "Abends" };
 const ALLDAY = { what: "Aktiv", detail: "", wishes: "", date: "2030-12-31", time: "Den ganzen Tag 🥹" };
@@ -46,18 +46,18 @@ test("ICS: ganzer Tag als Datums-Termin", () => {
 
 // ---------- Apple-Link und Rückweg ----------
 
-test("Apple-Link zeigt auf kalender.html neben der Seite und enthält alle Angaben", () => {
-  const u = new URL(appleUrl(EVENING, "https://xaver2009.github.io/Date/?x=1"));
+test("Kalender-Link zeigt auf kalender.html neben der Seite und enthält alle Angaben", () => {
+  const u = new URL(calendarPageUrl(EVENING, "https://xaver2009.github.io/Date/?x=1"));
   assert.equal(u.origin + u.pathname, "https://xaver2009.github.io/Date/kalender.html");
   assert.equal(u.searchParams.get("what"), "Kino");
   assert.equal(u.searchParams.get("date"), "2030-10-12");
   assert.equal(u.searchParams.get("time"), "Abends");
 });
 
-test("Apple-Link → stateFromQuery ergibt wieder denselben Termin", () => {
-  const u = new URL(appleUrl(EVENING, "https://example.com/Date/"));
+test("Kalender-Link → stateFromQuery ergibt wieder denselben Termin", () => {
+  const u = new URL(calendarPageUrl(EVENING, "https://example.com/Date/"));
   assert.deepEqual(stateFromQuery(u.search), EVENING);
-  const u2 = new URL(appleUrl(ALLDAY, "https://example.com/Date/"));
+  const u2 = new URL(calendarPageUrl(ALLDAY, "https://example.com/Date/"));
   assert.deepEqual(stateFromQuery(u2.search), ALLDAY);
 });
 

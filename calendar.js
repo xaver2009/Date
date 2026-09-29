@@ -53,8 +53,8 @@
     ].join("\r\n");
   }
 
-  // Link auf kalender.html (liegt neben der Date-Seite), der den Termin als ICS erzeugt
-  function appleUrl(state, baseHref) {
+  // Link auf kalender.html (liegt neben der Date-Seite): dort Apple (ICS) oder Google wählen
+  function calendarPageUrl(state, baseHref) {
     const u = new URL("kalender.html", baseHref);
     u.search = new URLSearchParams({
       what: state.what, detail: state.detail || "", wishes: state.wishes || "", date: state.date, time: state.time
@@ -82,7 +82,7 @@
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
 
-  const api = { eventData, gcalUrl, icsText, appleUrl, stateFromQuery, downloadIcs };
+  const api = { eventData, gcalUrl, icsText, calendarPageUrl, stateFromQuery, downloadIcs };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.DateCalendar = api;
 })(this);

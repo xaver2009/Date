@@ -94,8 +94,10 @@ test("Nach Bestätigung geht genau eine Mail mit allen Angaben an Web3Forms", as
   assert.equal(b["Tageszeit"], "Abends");
   assert.equal(b["Sonstige Wünsche"], "Popcorn");
   assert.match(b["Datum"], /12\..*Oktober.*2030/);
-  assert.match(b["Google Kalender"], /^https:\/\/calendar\.google\.com/);
-  assert.match(b["Apple Kalender"], /kalender\.html\?.*date=2030-10-12/);
+  assert.match(b["Zum Kalender hinzufügen"], /kalender\.html\?.*date=2030-10-12/);
+  // Nur ein Link in der Mail – mehrere Links hält Web3Forms teils lange zurück
+  const links = Object.values(b).filter(v => /[a-z]+:\/\//.test(v));
+  assert.equal(links.length, 1);
   win.close();
 });
 
@@ -150,7 +152,7 @@ test("Netzwerkfehler → Fehlermeldung statt Absturz", async () => {
   win.close();
 });
 
-// ---------- kalender.html (Link "Apple Kalender" aus der Mail) ----------
+// ---------- kalender.html (Link "Zum Kalender hinzufügen" aus der Mail) ----------
 
 const CAL_PAGE = path.join(__dirname, "..", "kalender.html");
 
@@ -175,18 +177,23 @@ function blobText(win, blob) {
   return new Promise(r => { const fr = new win.FileReader(); fr.onload = () => r(fr.result); fr.readAsText(blob); });
 }
 
-test("Apple-Link aus der Mail öffnet kalender.html und erzeugt den richtigen Termin", async () => {
+test("Kalender-Link aus der Mail öffnet kalender.html mit Apple- und Google-Knopf", async () => {
   // Link genau so, wie er in der Mail landet
   const { doc: page, calls, win: pageWin } = await loadPage(() => jsonResponse({ success: true }));
   fillUntilConfirm(page);
   click($(page, "#confirmBtn"));
   await waitFor(() => activeStep(page) === "step-done");
-  const query = new URL(calls[0].body["Apple Kalender"]).search;
+  const query = new URL(calls[0].body["Zum Kalender hinzufügen"]).search;
   pageWin.close();
 
   const { doc, win, blobs } = await loadCalendarPage(query);
   assert.match($(doc, "#title").textContent, /Kino \(Komödie\)/);
   assert.match($(doc, "#when").textContent, /12\. Oktober 2030.*Abends/);
+  const g = $(doc, "#gcalBtn");
+  assert.ok(g && !g.hidden, "Google-Knopf fehlt");
+  const gu = new URL(g.href);
+  assert.equal(gu.hostname, "calendar.google.com");
+  assert.equal(gu.searchParams.get("dates"), "20301012T180000/20301013T000000");
 
   const before = blobs.length;
   click($(doc, "#addBtn"));

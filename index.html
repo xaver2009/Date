@@ -240,8 +240,8 @@
 </main>
 
 <!-- Versionsnummer bei jeder Änderung an mail.js/calendar.js erhöhen (auch in kalender.html) -->
-<script src="calendar.js?v=4"></script>
-<script src="mail.js?v=4"></script>
+<script src="calendar.js?v=5"></script>
+<script src="mail.js?v=5"></script>
 <script>
   // Web3Forms-Zugangsschlüssel (von web3forms.com, die Mails gehen an die dort hinterlegte Adresse)
   const WEB3FORMS_KEY = "e34814b4-23a7-4644-8093-57d5081cc38a";
@@ -458,7 +458,7 @@
 
     const fields = DateMail.buildMailFields(state, {
       prettyDate: prettyDate(state.date), tries,
-      googleUrl: gcalUrl(), appleUrl: DateCalendar.appleUrl(state, location.href)
+      calendarPageUrl: DateCalendar.calendarPageUrl(state, location.href)
     });
     const sending = mailer.send(fields);
 
