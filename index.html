@@ -74,6 +74,7 @@
   }
   .primary:disabled { background: #e3b3b9; cursor: not-allowed; }
   .primary:not(:disabled):hover { background: var(--accent-dark); }
+  .sms-btn { display: block; text-decoration: none; padding: 14px 30px; border-radius: 999px; font-size: 18px; font-weight: 500; }
   .cal-link { display: block; margin-top: 14px; color: var(--accent-dark); font-size: 15px; text-decoration: underline; }
   .back {
     background: none; color: var(--muted); font-size: 15px; padding: 10px; margin-top: 6px;
@@ -233,7 +234,8 @@
     <div class="emoji">🥳</div>
     <h1>Es ist ein Date!</h1>
     <p>Ich freu mich riesig auf dich 💕</p>
-    <button class="primary" id="icsBtn">📅 Nochmal im Kalender öffnen</button>
+    <a class="primary sms-btn" id="smsBtn">💌 Xaver Bescheid geben</a>
+    <button class="back" id="icsBtn">📅 Nochmal im Kalender öffnen</button>
     <a class="cal-link" id="gcalLink" target="_blank" rel="noopener">oder in Google Kalender speichern</a>
   </section>
 
@@ -477,27 +479,10 @@
     setTimeout(() => form.remove(), 5000);
   }
 
-  // Push-Nachricht an Xavers Handy (ntfy-App, Thema siehe NTFY_TOPIC)
-  const NTFY_TOPIC = "xaver-date-4d5cbc2d";
-  function sendPush() {
-    const lines = [
-      "Was: " + state.what + (state.detail ? " (" + state.detail + ")" : ""),
-      "Wann: " + prettyDate(state.date) + ", " + state.time,
-      "Wünsche: " + (state.wishes || "-"),
-      "Nein-Versuche: " + tries
-    ];
-    const url = "https://ntfy.sh/" + NTFY_TOPIC +
-      "?title=" + encodeURIComponent("Sie hat JA gesagt!") +
-      "&tags=heart,rose" +
-      "&click=" + encodeURIComponent(gcalUrl());
-    fetch(url, { method: "POST", body: lines.join("\n"), mode: "no-cors", keepalive: true }).catch(() => {});
-  }
-
   confirmBtn.addEventListener("click", () => {
     confirmBtn.disabled = true;
     confirmBtn.textContent = "Wird gesendet… 💌";
     sendError.style.display = "none";
-    try { sendPush(); } catch (e) {}
     try {
       sendMail();
     } catch (err) {
@@ -552,8 +537,14 @@
       "&details=" + encodeURIComponent(c.desc);
   }
 
+  const PHONE = "+4915226528174";
   function setupCalendar() {
     document.getElementById("gcalLink").href = gcalUrl();
+    const text = "Ja, ich will ❤️ " + ACT_NAME[state.what] + (state.detail ? " (" + state.detail + ")" : "") +
+      " am " + prettyDate(state.date) + ", " + state.time +
+      (state.wishes ? ". Wünsche: " + state.wishes : "");
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    document.getElementById("smsBtn").href = "sms:" + PHONE + (isIOS ? "&" : "?") + "body=" + encodeURIComponent(text);
   }
 
   document.getElementById("icsBtn").addEventListener("click", openCalendar);
