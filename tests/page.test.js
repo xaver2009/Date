@@ -60,23 +60,25 @@ function fillUntilConfirm(doc) {
 }
 
 test("Ohne Bestätigung wird keine Mail gesendet", async () => {
-  const { doc, calls, win } = await loadPage(() => jsonResponse({ success: "true" }));
+  const { doc, calls, win } = await loadPage(() => jsonResponse({ success: true }));
   fillUntilConfirm(doc);
   await tick(50);
   assert.equal(calls.length, 0);
   win.close();
 });
 
-test("Nach Bestätigung geht genau eine Mail mit allen Angaben an FormSubmit", async () => {
-  const { doc, calls, win } = await loadPage(() => jsonResponse({ success: "true" }));
+test("Nach Bestätigung geht genau eine Mail mit allen Angaben an Web3Forms", async () => {
+  const { doc, calls, win } = await loadPage(() => jsonResponse({ success: true }));
   fillUntilConfirm(doc);
   click($(doc, "#confirmBtn"));
   await waitFor(() => activeStep(doc) === "step-done");
 
   assert.equal(calls.length, 1);
-  assert.match(calls[0].url, /^https:\/\/formsubmit\.co\/ajax\/[^@\/]+@[^@\/]+$/);
+  assert.equal(calls[0].url, "https://api.web3forms.com/submit");
   assert.equal(calls[0].opts.method, "POST");
   const b = calls[0].body;
+  assert.match(b.access_key, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    "In index.html ist kein echter Web3Forms-Zugangsschlüssel eingetragen");
   assert.equal(b["Was"], "Kino");
   assert.equal(b["Genauer"], "Komödie");
   assert.equal(b["Tageszeit"], "Abends");
@@ -87,7 +89,7 @@ test("Nach Bestätigung geht genau eine Mail mit allen Angaben an FormSubmit", a
 });
 
 test("Mehrfach auf Bestätigen tippen → trotzdem nur eine Mail", async () => {
-  const { doc, calls, win } = await loadPage(async () => { await tick(100); return jsonResponse({ success: "true" }); });
+  const { doc, calls, win } = await loadPage(async () => { await tick(100); return jsonResponse({ success: true }); });
   fillUntilConfirm(doc);
   const btn = $(doc, "#confirmBtn");
   click(btn); click(btn); click(btn);
@@ -98,7 +100,7 @@ test("Mehrfach auf Bestätigen tippen → trotzdem nur eine Mail", async () => {
 
 test("Versand schlägt fehl → Fehlermeldung, bleibt auf der Seite, erneuter Versuch klappt", async () => {
   const { doc, calls, win } = await loadPage((n) =>
-    n === 1 ? jsonResponse({ success: "false", message: "This form needs Activation." }) : jsonResponse({ success: "true" })
+    n === 1 ? jsonResponse({ success: false, message: "Invalid access key" }) : jsonResponse({ success: true })
   );
   fillUntilConfirm(doc);
   const btn = $(doc, "#confirmBtn");

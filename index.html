@@ -243,8 +243,8 @@
 
 <script src="mail.js"></script>
 <script>
-  // Hierhin geht die Benachrichtigung
-  const EMAIL = "xaverefinger5@gmail.com";
+  // Web3Forms-Zugangsschlüssel (von web3forms.com, die Mails gehen an die dort hinterlegte Adresse)
+  const WEB3FORMS_KEY = "e34814b4-23a7-4644-8093-57d5081cc38a";
 
   const state = { what: "", detail: "", wishes: "", date: "", time: "" };
 
@@ -446,8 +446,8 @@
   const confirmBtn = document.getElementById("confirmBtn");
   const sendError = document.getElementById("sendError");
 
-  // Versand über FormSubmit (mail.js); wartet auf die Antwort, damit Fehler sichtbar werden
-  const mailer = DateMail.createMailer({ email: EMAIL, fetch: (...args) => window.fetch(...args) });
+  // Versand über Web3Forms (mail.js); wartet auf die Antwort, damit Fehler sichtbar werden
+  const mailer = DateMail.createMailer({ accessKey: WEB3FORMS_KEY, fetch: (...args) => window.fetch(...args) });
   let calendarOpened = false;
 
   confirmBtn.addEventListener("click", async () => {
