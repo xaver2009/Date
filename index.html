@@ -241,9 +241,10 @@
 
 </main>
 
+<script src="mail.js"></script>
 <script>
   // Hierhin geht die Benachrichtigung
-  const EMAIL = "xaverefinger@gmail.com";
+  const EMAIL = "xaverefinger5@gmail.com";
 
   const state = { what: "", detail: "", wishes: "", date: "", time: "" };
 
@@ -445,60 +446,38 @@
   const confirmBtn = document.getElementById("confirmBtn");
   const sendError = document.getElementById("sendError");
 
-  // Versand über ein verstecktes Formular (klassischer FormSubmit-Weg, ohne fetch)
-  const sendFrame = document.createElement("iframe");
-  sendFrame.name = "sendFrame";
-  sendFrame.style.display = "none";
-  document.body.appendChild(sendFrame);
+  // Versand über FormSubmit (mail.js); wartet auf die Antwort, damit Fehler sichtbar werden
+  const mailer = DateMail.createMailer({ email: EMAIL, fetch: (...args) => window.fetch(...args) });
+  let calendarOpened = false;
 
-  function sendMail() {
-    const fields = {
-      _subject: "Sie hat JA gesagt! Date-Anfrage ausgefüllt",
-      _template: "table",
-      _captcha: "false",
-      "Was": state.what,
-      "Genauer": state.detail || "-",
-      "Datum": prettyDate(state.date),
-      "Tageszeit": state.time,
-      "Sonstige Wünsche": state.wishes || "-",
-      "Nein-Versuche": String(tries),
-      "In Kalender eintragen": gcalUrl()
-    };
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = "https://formsubmit.co/" + EMAIL;
-    form.target = "sendFrame";
-    form.style.display = "none";
-    Object.entries(fields).forEach(([k, v]) => {
-      const input = document.createElement("input");
-      input.type = "hidden"; input.name = k; input.value = v;
-      form.appendChild(input);
-    });
-    document.body.appendChild(form);
-    form.submit();
-    setTimeout(() => form.remove(), 5000);
-  }
-
-  confirmBtn.addEventListener("click", () => {
+  confirmBtn.addEventListener("click", async () => {
+    if (confirmBtn.disabled) return;
     confirmBtn.disabled = true;
     confirmBtn.textContent = "Wird gesendet… 💌";
     sendError.style.display = "none";
-    try {
-      sendMail();
-    } catch (err) {
-      console.error(err);
+
+    const fields = DateMail.buildMailFields(state, {
+      prettyDate: prettyDate(state.date), tries, calendarUrl: gcalUrl()
+    });
+    const sending = mailer.send(fields);
+
+    // Kalender direkt im Tipp öffnen, damit der Browser es erlaubt (nur beim ersten Mal)
+    if (!calendarOpened) {
+      calendarOpened = true;
+      try { openCalendar(); } catch (e) {}
+    }
+
+    const result = await sending;
+    if (!result.ok) {
+      console.error("E-Mail-Versand fehlgeschlagen:", result.reason);
       sendError.style.display = "block";
       confirmBtn.disabled = false;
       confirmBtn.textContent = "Date bestätigen 💖";
       return;
     }
-    // Kalender direkt im Tipp öffnen, damit der Browser es erlaubt
-    try { openCalendar(); } catch (e) {}
-    setTimeout(() => {
-      show("step-done");
-      setupCalendar();
-      burst();
-    }, 1200);
+    show("step-done");
+    setupCalendar();
+    burst();
   });
 
   // Kalender-Eintrag
